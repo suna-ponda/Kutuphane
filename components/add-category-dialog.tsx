@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import {
     Field,
@@ -11,37 +11,56 @@ import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Controller, useForm } from "react-hook-form"
 import { Button } from "./ui/button";
-import { addCategory } from "@/actions/actions";
+import { addCategory, updateCategory } from "@/actions/actions";
 import { usePathname } from "next/navigation";
-//import { toast } from "sonner";
+import { toast } from "sonner";
+import { Category } from "@/app/(admin)/admin/categories/column";
 
 type Props = {
     open: boolean,
     setOpen: React.Dispatch<React.SetStateAction<boolean>>
-    category?: string
+    category?: Category
 }
 
 const formSchema = z.object({
-    id: z.number().default(-1),
-    // id: z.number(),
+    // id: z.number().default(-1),
+    id: z.number(),
     name: z.string().min(2, {
         message: 'Category must be entered'
     }).max(20)
 })
 
 function AddCategoryDialog({ setOpen, open, category }: Props) {
-    
     const path = usePathname()
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
-        defaultValues: { id:1, name: "" }
-
+        defaultValues: { id: -1, name: "" }
     })
 
-    const onSubmit = async(values: z.infer<typeof formSchema>) => {
-        await addCategory(values.name, path)
-        //toast
+    useEffect(() => {
+        if (category) {
+            form.setValue("id", category.category_id)
+            form.setValue("name", category.category_name)
+        }
+    }, [category, form])
+
+    const onSubmit = async (values: z.infer<typeof formSchema>) => {
+        try {
+            if (category) {
+                await updateCategory(category.category_id, values.name, path)
+                toast("Category has been updated.")
+            } else {
+                await addCategory(values.name, path)
+                toast("Category has been created.")
+            }
+
+            form.reset()
+            
+        } catch (error) {
+            console.log(error)
+            toast("Failed to perform action")
+        }
     }
 
     return (
